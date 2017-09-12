@@ -21,9 +21,10 @@
 #include "my_alpha.c"
 #include "my_digits.c"
 #include "my_revstr.c"
+#include "my_strindex.c"
+#include "my_strrindex.c"
 
 #include <string.h>
-#include <stdio.h>
 int main(){
 	my_str("Hello, World!\n");
 	my_int(my_strlen("Hello, World!"));
@@ -38,11 +39,18 @@ int main(){
 	my_digits();
 	my_char('\n');
 	char* hello = (char*) malloc(sizeof(char)*15);
-	strcpy(hello, "Hello, World!\0");
+	strcpy(hello, "Hello, World!");
 	my_str(hello);
 	my_char('\n');
 	my_revstr(hello);
-	my_str(hello+'\n');
-	printf("\n");
-	printf(hello);
+	my_str(hello);
+	my_char('\n');
+	my_int(my_strindex(hello,'l'));
+	my_char('\n');
+	my_int(my_strrindex(hello,'l'));
+
+
+	strcpy(hello,"              ");
+	free(hello);
+	my_char('\n');
 }
