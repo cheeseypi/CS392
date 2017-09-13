@@ -5,13 +5,21 @@
 
 void my_int(int a){
 	int num = a;
+	int pow = 1;
+	int len = 0;
+	while(num/pow >= 10){
+		pow *= 10;
+		len++;
+	}
 	if(num<0){
-		num = -num;
 		my_char('-');
 	}
-	for(int curCharInd=simple_intlen(num)-1; curCharInd>=0; curCharInd--){
-		int curChar = num/simple_pow(10,curCharInd);
-		num = num-curChar*simple_pow(10,curCharInd);
+	for(int curCharInd=len; curCharInd>=0; curCharInd--){
+		int curChar = num/pow;
+		num -= curChar*pow;
+		if(curChar<0)
+			curChar = -curChar;
+		pow/=10;
 		my_char(curChar+'0');
 	}
 }

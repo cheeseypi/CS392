@@ -24,11 +24,14 @@
 #include "my_strindex.c"
 #include "my_strrindex.c"
 
+#include <limits.h>
 #include <string.h>
+#include <stdio.h>
 int main(){
 	my_str("Hello, World!\n");
 	my_int(my_strlen("Hello, World!"));
-	//Max printable int value 1410065407 -- TODO Figure out
+	my_char('\n');
+	my_int(-200);
 	my_char('\n');
 	for(int i=-10; i<=10; i++){
 		my_int(i);
