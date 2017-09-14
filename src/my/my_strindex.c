@@ -10,3 +10,8 @@ int my_strindex(char* str, char fin){
 	return -1;
 }
 #endif
+
+/*
+ * Matthew Doto
+ * I pledge my honor that I have abided by the Stevens Honor System
+ */

@@ -23,3 +23,8 @@ void my_char(char c){
 	write(1,&c,1);
 }
 #endif
+
+/*
+ * Matthew Doto
+ * I pledge my honor that I have abided by the Stevens Honor System
+ */

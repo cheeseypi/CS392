@@ -13,3 +13,8 @@ void my_str(char* str){
 	}
 }
 #endif
+
+/*
+ * Matthew Doto
+ * I pledge my honor that I have abided by the Stevens Honor System
+ */

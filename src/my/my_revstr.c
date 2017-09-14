@@ -14,3 +14,8 @@ int my_revstr(char* str){
 	return len;
 }
 #endif
+
+/*
+ * Matthew Doto
+ * I pledge my honor that I have abided by the Stevens Honor System
+ */

@@ -12,3 +12,8 @@ int my_strlen(char* str){
 	return i;
 }
 #endif
+
+/*
+ * Matthew Doto
+ * I pledge my honor that I have abided by the Stevens Honor System
+ */
