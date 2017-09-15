@@ -20,4 +20,16 @@ int my_revstr(char*);
 int my_strindex(char*, char); 
 int my_strrindex(char*, char);
 
+char* my_strfind(char*, char);
+char* my_strrfind(char*, char);
+int my_strcmp(char* a, char* b);
+int my_strncmp(char* a, char* b, int n);
+char* my_strcpy(char* dst, char* src);
+char* my_strncpy(char* dst, char* src, int n);
+char* my_strcat(char* dst, char* src);
+char* my_strdup(char* str);
+char* my_strconcat(char* a, char* b);
+char* my_strnconcat(char* a, char* b, int n);
+int my_atoi(char*);
+
 #endif

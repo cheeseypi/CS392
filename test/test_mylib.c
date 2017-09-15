@@ -15,15 +15,7 @@
  *
  * =====================================================================================
  */
-#include "my_str.c"
-#include "my_int.c"
-#include "my_strlen.c"
-#include "my_alpha.c"
-#include "my_digits.c"
-#include "my_revstr.c"
-#include "my_strindex.c"
-#include "my_strrindex.c"
-#include "my_num_base.c"
+#include "my.h"
 
 #include <limits.h>
 #include <string.h>
@@ -139,13 +131,14 @@ void test_my_strrindex(){
 	free(hello);
 }
 int main(){
-/*	test_my_alpha();my_char('\n');
+	test_my_alpha();my_char('\n');
 	test_my_digits();my_char('\n');
 	test_my_int();my_char('\n');
 	test_my_num_base();my_char('\n');
-	test_my_str();my_char('\n');*/
+	test_my_str();my_char('\n');
 	test_my_revstr();my_char('\n');
-/*	test_my_strindex();my_char('\n');
+	test_my_strindex();my_char('\n');
 	test_my_strlen();my_char('\n');
-	test_my_strrindex();my_char('\n');*/
+	test_my_strrindex();my_char('\n');
+	//HELLO
 }
