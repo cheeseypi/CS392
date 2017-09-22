@@ -1,7 +1,4 @@
-#ifndef _MY_STR_
-#define _MY_STR_
 #include "my.h"
-#include "my_char.c"
 
 void my_str(char* str){
 	if(str == NULL)
@@ -12,7 +9,6 @@ void my_str(char* str){
 		i++;
 	}
 }
-#endif
 
 /*
  * Matthew Doto

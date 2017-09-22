@@ -15,14 +15,11 @@
  *
  * =====================================================================================
  */
-#ifndef _MY_CHAR_
-#define _MY_CHAR_
 #include "my.h"
 
 void my_char(char c){
 	write(1,&c,1);
 }
-#endif
 
 /*
  * Matthew Doto

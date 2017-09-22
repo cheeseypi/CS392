@@ -1,7 +1,6 @@
 #ifndef _MY_REVSTR_
 #define _MY_REVSTR_
 #include "my.h"
-#include "my_strlen.c"
 int my_revstr(char* str){
 	if(str == NULL)
 		return -1;
