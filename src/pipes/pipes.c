@@ -52,6 +52,76 @@
  *
  * =====================================================================================
  */
+#define _POSIX_SOURCE
+#include <sys/types.h>
+#include <signal.h>
 #include <unistd.h>
+#include <sys/wait.h>
 #include "my.h"
 
+void child_handler(int signum){}
+
+int main(int argc, char *argv[]){
+	int pipefd[2];
+	pid_t cpid;
+	char buf;
+
+	if(signal(SIGUSR1, child_handler) == SIG_ERR){
+		my_str("Can't catch SIGUSR1");
+		exit(1);
+	}
+
+	if(pipe(pipefd)==-1)
+		exit(1);
+
+	if((cpid = fork())==-1)
+		exit(1);
+
+	if(cpid == 0){
+		int gcpipefd[2];
+		pid_t gcpid;
+		
+		if(pipe(gcpipefd)==-1)
+			exit(1);
+
+		if((gcpid = fork()) == -1)
+			exit(1);
+
+		if(gcpid == 0){//GRANDCHILD PROCESS
+			pause();
+			my_str("Grandchild: ");
+			close(gcpipefd[1]);
+			while (read(gcpipefd[0], &buf, 1) > 0){
+				write(1, &buf, 1);
+			}
+			my_char('\n');
+			close(gcpipefd[0]);
+			exit(0);
+		} else {//CHILD PROCESS
+			pause();
+			my_str("Child: ");
+			close(pipefd[1]);
+			close(gcpipefd[0]);
+			while (read(pipefd[0], &buf, 1) > 0){
+				write(1, &buf, 1);
+				write(gcpipefd[1], &buf, 1);
+			}
+			my_char('\n');
+			kill(gcpid, SIGUSR1);
+			close(pipefd[0]);
+			close(gcpipefd[1]);
+			wait(NULL);
+			exit(0);
+		}
+	} else { //PARENT PROCESS
+		my_str("Parent: ");
+		my_str(my_vect2str(&argv[1]));
+		my_char('\n');
+		kill(cpid, SIGUSR1);
+		close(pipefd[0]);
+		write(pipefd[1],my_vect2str(&argv[1]),my_strlen(my_vect2str(&argv[1])));
+		close(pipefd[1]);
+		wait(NULL);
+		exit(0);
+	}
+}

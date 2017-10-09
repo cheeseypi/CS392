@@ -15,10 +15,17 @@ fclean: clean
 re: fclean all
 
 test: all
-	-./pipes
+	-./pipes Hello, World! This is a test.
 	make fclean
 
-valgrind: all
+allDB: pipes.c
+	$(CC) $(CFLAGS) -o ./pipes $(mainprog_c) -L$(LD_LIBRARY_PATH) -llist -lmy -g
+
+debug: allDB
+	-gdb ./pipes
+	make fclean
+
+valgrind: allDB
 	-valgrind ./pipes
 	make fclean
 
