@@ -16,6 +16,8 @@ re: fclean all
 
 test: all
 	-./pipes Hello, World! This is a test.
+	-./pipes
+	-./pipes hhujhyuhyuhyugyuhyuhgyuhgyuhg
 	make fclean
 
 allDB: pipes.c

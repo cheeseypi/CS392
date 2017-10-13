@@ -19,8 +19,8 @@ clean:
 	rm -rf *.o
 
 fclean: clean
-	-rm -rf ../../lib/*
-	-rm -rf ../../bin/*
+	-rm -rf ../../lib/liblist.a
+	-rm -rf ../../bin/main
 
 re: fclean all
 

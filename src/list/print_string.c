@@ -18,7 +18,7 @@
  */
 #include "list.h"
 
-void print_char(struct s_node* node){
+void print_string(struct s_node* node){
 	if(node && node->elem){
 		my_str((char*)node->elem);
 	}

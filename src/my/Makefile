@@ -18,8 +18,8 @@ clean:
 	rm -rf *.o
 
 fclean: clean
-	rm -rf ../../bin/*
-	rm -rf ../../lib/*
+	rm -rf ../../bin/main
+	rm -rf ../../lib/libmy.a
 
 re: fclean all
 

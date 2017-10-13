@@ -1,8 +1,7 @@
 #include "my.h"
 
 char* my_strcpy(char* dst, char* src){
-	if(src==NULL){
-		dst[0]='\0';
+	if(src==NULL || dst==NULL){
 		return dst;
 	}
 	for(int i = 0; i<=my_strlen(src); i++){

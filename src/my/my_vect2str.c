@@ -39,4 +39,5 @@ char* my_vect2str(char** x){
 			my_strcat(rT," ");
 		ctr++;
 	}
+	return rT;
 }

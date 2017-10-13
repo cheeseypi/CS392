@@ -1,11 +1,14 @@
 #include "my.h"
 
 char* my_strncpy(char* dst, char* src, int n){
-	if(src==NULL && n>0)
-		dst[0]='\0';
-	for(int i = 0; i<=my_strlen(src) && i<n; i++){
+	if(src==NULL || dst==NULL)
+		return dst;
+	int i = 0;
+	for(; i<=my_strlen(src) && i<n; i++){
 		dst[i] = src[i];
 	}
+//	if(i>=n)
+//		dst[i] = '\0';
 	return dst;
 }
 
