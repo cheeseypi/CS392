@@ -24,68 +24,66 @@
  */
 #include "my.h"
 
-int getNumWords(char* str){
-	char c=str[0];
+char** create_vector(char* str){
 	int count = 0;
 	int inWord = 0;
-	for(int ctr=1; c!='\0'; (c=str[ctr], ctr++)){
-		if(c==' ' || c=='\t' || c=='\n'){
-			inWord=0;
+	for(int ind = 0; str[ind]!='\0'; ind++){
+		if(str[ind]==' ' || str[ind]=='\t' || str[ind]=='\n'){
+			inWord = 0;
 		}
 		else if(!inWord){
+			inWord = 1;
 			count++;
-			inWord=1;
+		}
+	}
+	return (char**) malloc(sizeof(char*)*count);
+}
+
+void malloc_vector(char* str, char** vect){
+	int vectInd = 0;
+	int sizeofcurword = 0;
+	int inWord = 0;
+	for(int ind = 0; str[ind]!='\0'; ind++){
+		if(str[ind]==' ' || str[ind]=='\t' || str[ind]=='\n'){
+			if(inWord){
+				vect[vectInd] = (char*) malloc(sizeofcurword*sizeof(char));
+				vectInd++;
+				sizeofcurword=0;
+			}
+			inWord = 0;
+		}
+		else{
+			sizeofcurword++;
+			inWord = 1;
+		}
+	}
+	if(sizeofcurword>0)
+		vect[vectInd] = (char*) malloc(sizeofcurword*sizeof(char));
+}
+
+void fill_vector(char* str, char** vect){
+	int vectInd = 0;
+	int charInd = 0;
+	int inWord = 0;
+	for(int ind = 0; str[ind]!='\0'; ind++){
+		if(str[ind]==' ' || str[ind]=='\t' || str[ind]=='\n'){
+			if(inWord){
+				vectInd++;
+				charInd = 0;
+			}
+			inWord = 0;
+		}
+		else{
+			vect[vectInd][charInd]=str[ind];
+			charInd++;
+			inWord = 1;
 		}
 	}
 }
 
 char** my_str2vect(char* str){
-	int numWords = getNumWords(str);
-	int lengths[numWords];
-	char c = str[0];
-	int lengthInd = 0;
-	int length = 0;
-	int inWord = 0;
-	for(int charctr = 1; c!='\0'; (c = str[charctr], charctr++)){
-		if((c==' ' || c=='\t' || c=='\n') && inWord){
-			lengths[lengthInd] = length;
-			lengthInd++;
-			length=0;
-			inWord=0;
-		}
-		else if(c==' ' || c=='\t' || c=='\n'){
-			inWord=0;
-		}
-		else if(!inWord){
-			inWord=1;
-			length++;
-		}
-		else{
-			length++;
-		}
-	}
-
-	char** rT = (char**) malloc(sizeof(char*)*numWords);
-	for(int i = 0; i<numWords; i++)
-		rT[i] = (char*) malloc(sizeof(char)*lengths[i]);
-	
-	c = str[0];
-	inWord = 0;
-	int word = 0;
-	int charInd = 0;
-	for(int charctr = 1; c!='\0'; (c = str[charctr], charctr++)){
-		if((c==' ' || c=='\t' || c=='\n') && inWord){
-			inWord = 0;
-			word++;
-			charInd=0;
-		}
-		else if(c==' ' || c=='\t' || c=='\n'){
-			inWord=0;
-		}
-		else{
-			inWord=1;
-			rT[word][charInd]=c;
-			charInd++;
-		}
-	}
+	char** vect = create_vector(str);
+	malloc_vector(str, vect);
+	fill_vector(str, vect);
+	return vect;
 }
