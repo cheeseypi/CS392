@@ -7,8 +7,8 @@ char* my_strncpy(char* dst, char* src, int n){
 	for(; i<=my_strlen(src) && i<n; i++){
 		dst[i] = src[i];
 	}
-//	if(i>=n)
-//		dst[i] = '\0';
+	if(i>=n)
+		dst[i] = '\0';
 	return dst;
 }
 

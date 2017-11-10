@@ -36,7 +36,9 @@ char** create_vector(char* str){
 			count++;
 		}
 	}
-	return (char**) malloc(sizeof(char*)*count);
+	char** vect = (char**) malloc(sizeof(char*)*(count+1));
+	vect[count]=NULL;
+	return vect;
 }
 
 void malloc_vector(char* str, char** vect){

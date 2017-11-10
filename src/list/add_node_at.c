@@ -20,17 +20,28 @@
 #include "list.h"
 
 void add_node_at(struct s_node* node, struct s_node** head, int n){
-	if(node == NULL || node->elem == NULL || head == NULL || *head == NULL)
+	if(node == NULL || node->elem == NULL || head == NULL || n<0)
 		return;
+	if(!*head){
+		add_node(node,head);
+		return;
+	}
 	struct s_node* t = *head;
-	int ctr = 1;
+	int ctr = 0;
 	while(t->next && ctr<n){
 		t = t->next;
 		ctr++;
 	}
-	node->next = t->next;
-	if(t->next != NULL)
-		t->next->prev = node;
-	node->prev = t;
-	t->next = node;
+	if(ctr==n){
+		node->next = t;
+		node->prev = t->prev;
+		if(t->prev)
+			t->prev->next = node;
+	}
+	else{
+		t->next=node;
+		node->prev=t;
+	}
+	if(node->next)
+		node->next->prev=node;
 }

@@ -1,13 +1,12 @@
 /*
  * =====================================================================================
  *
- *       Filename:  add_elem.c
+ *       Filename:  test.c
  *
- *    Description:  Creates a new node with elem and adds it to head. DO NOT add a NULL
- *    			elem.
+ *    Description:  
  *
  *        Version:  1.0
- *        Created:  09/25/2017 03:06:19 PM
+ *        Created:  11/08/2017 02:13:52 PM
  *       Revision:  none
  *       Compiler:  gcc
  *
@@ -17,10 +16,15 @@
  *
  * =====================================================================================
  */
-#include "list.h"
+#include "my.h"
 
-void add_elem(void* elem, struct s_node** head){
-	if(elem == NULL || head == NULL)
-		return;
-	add_node(new_node(elem,*head,NULL),head);
+int main(){
+	my_str("Hello, Wor");
+	my_char('\n');
+	my_str(my_strnconcat("Hello, ","World",3));
+	my_char('\n');
+	my_str("World");
+	my_char('\n');
+	my_str(my_strnconcat(NULL,"World",5));
+	my_char('\n');
 }

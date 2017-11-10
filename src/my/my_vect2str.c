@@ -24,6 +24,8 @@
 #include "my.h"
 
 char* my_vect2str(char** x){
+	if(x == NULL)
+		return NULL;
 	int totalSize = 0;
 	int ctr=0;
 	for(char* t = x[ctr]; t; t = x[ctr]){

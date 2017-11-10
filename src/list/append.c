@@ -22,9 +22,13 @@
 void append(struct s_node* node, struct s_node** head){
 	if(!node || !node->elem || !head)
 		return;
-	struct s_node* t = *head;
-	while(t->next)
-		t = t->next;
-	t->next = node;
-	node->prev = t;
+	if(!*head)
+		add_node(node,head);
+	else{
+		struct s_node* t = *head;
+		while(t->next)
+			t = t->next;
+		t->next = node;
+		node->prev = t;
+	}
 }

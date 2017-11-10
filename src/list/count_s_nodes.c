@@ -21,7 +21,7 @@
 
 int count_s_nodes(struct s_node* head){
 	if(!head)
-		return 1;
+		return 0;
 	int i = 1;
 	struct s_node* t = head;
 	while(t->next){

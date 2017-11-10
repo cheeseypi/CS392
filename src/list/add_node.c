@@ -20,9 +20,14 @@
 #include "list.h"
 
 void add_node(struct s_node* node, struct s_node** head){
-	if(node == NULL || node->elem == NULL || *head == NULL)
+	if(node == NULL || node->elem == NULL || head==NULL)
 		return;
-	node->next = *head;
-	(*head)->prev = node;
-	*head = node;
+	if(*head==NULL){
+		*head = node;
+	}
+	else{
+		node->next = *head;
+		(*head)->prev = node;
+		*head = node;
+	}
 }

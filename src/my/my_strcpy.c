@@ -4,9 +4,12 @@ char* my_strcpy(char* dst, char* src){
 	if(src==NULL || dst==NULL){
 		return dst;
 	}
-	for(int i = 0; i<=my_strlen(src); i++){
+	int srclen = my_strlen(src);
+	int i;
+	for(i=0; i<=srclen; i++){
 		dst[i] = src[i];
 	}
+	dst[i-1]='\0';
 	return dst;
 }
 

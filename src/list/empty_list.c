@@ -21,6 +21,7 @@
 #include "list.h"
 
 void empty_list(struct s_node** head){
-	while(count_s_nodes(*head)>0)
-		remove_node(head);
+	if(head)
+		while(count_s_nodes(*head)>0 && *head)
+			remove_node(head);
 }

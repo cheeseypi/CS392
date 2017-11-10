@@ -49,15 +49,11 @@ void minihelp(){
 	my_str("> help : Usage: help. Displays this help message\n");
 }
 
-static pid_t cpid;
-
-void sighand(int signo){
-	kill(cpid,SIGINT);
-}
-
 int main(int argc, char* argv[]){
 	char buf[255];
-	signal(SIGINT,sighand);
+	signal(SIGINT,SIG_IGN);
+	for(int i = 0; i<255; i++)
+		buf[i]='\0';
 	while(1){	
 		miniprompt();
 		read(0,&buf,255);
@@ -69,9 +65,10 @@ int main(int argc, char* argv[]){
 		else if(my_strcmp(cmd[0],"exit")==0)
 			miniexit();
 		else{
-			cpid = fork();
+			int cpid = fork();
 			if(cpid==0){
-				if(execv(cmd[0],&(cmd[1]))!=1){
+				signal(SIGINT,SIG_DFL);
+				if(execvp(cmd[0],cmd)!=1){
 					my_str("Unrecognized.\n");
 					minihelp();
 				}

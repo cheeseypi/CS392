@@ -7,10 +7,30 @@ int min(int a, int b){
 }
 
 char* my_strnconcat(char* a, char* b, int n){
-	int newLen = my_strlen(a) + min(my_strlen(b),n);
+	if(a==NULL && b==NULL)
+		return NULL;
+	int alen,blen;
+	if(a==NULL)
+		alen=0;
+	else
+		alen=my_strlen(a);
+	if(b==NULL)
+		blen=0;
+	else
+		blen=my_strlen(b);
+	int n1 = n;
+	if(n<0)
+		n1=0;
+	int newLen = alen + min(blen,n1);
 	char* newStr = (char*) malloc(sizeof(char)*(newLen+1));
-	my_strcpy(newStr,a);
-	my_strncpy(newStr+my_strlen(a),b,min(my_strlen(b),n));
+	if(a==NULL)
+		my_strcpy(newStr,"");
+	else
+		my_strcpy(newStr,a);
+	if(b==NULL)
+		my_strcpy(newStr+alen,"\0");
+	else
+		my_strncpy(newStr+alen,b,min(blen,n1));
 	return newStr;
 }
 
