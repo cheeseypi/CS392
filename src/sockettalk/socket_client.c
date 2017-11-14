@@ -113,7 +113,7 @@ int main(int argc, char *argv[]){
 	}
 	printf("Prompt\n");
 	char* nick = promptUsername();
-	printf(nick);
+	printf("%s",nick);
 	printf("Prompted\n");
 	struct addrinfo* servinfo = establishConnection(nick,argv[1],argv[2]);
 	printf("Connected\n");

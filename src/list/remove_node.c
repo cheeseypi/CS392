@@ -21,19 +21,15 @@
 #include "list.h"
 
 void* remove_node(struct s_node** node){
-	if(!node || !*node)
+	if(node==NULL || *node==NULL)
 		return NULL;
 	struct s_node* oldNode = *node;
 	void* elem = oldNode->elem;
-	if(oldNode->next)
+	if(oldNode->next!=NULL)
 		oldNode->next->prev=oldNode->prev;
-	if(oldNode->prev)
+	if(oldNode->prev!=NULL)
 		oldNode->prev->next=oldNode->next;
-	else
-		*node = oldNode->next;
-	oldNode->next=NULL;
-	oldNode->prev=NULL;
-	oldNode->elem=NULL;
+	*node = oldNode->next;
 	free(oldNode);
 	return elem;
 }

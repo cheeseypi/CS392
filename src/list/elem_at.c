@@ -20,6 +20,8 @@
 #include "list.h"
 
 void* elem_at(struct s_node* head, int n){
+	if(head==NULL)
+		return NULL;
 	struct s_node* t = head;
 	for(int ctr = 0; t->next && ctr<n; (ctr++, t = t->next));
 	return t->elem;

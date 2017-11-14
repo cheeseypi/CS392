@@ -53,6 +53,8 @@
 #include <sys/wait.h>
 #include <sys/types.h>
 #include <sys/ioctl.h>
+#include <sys/types.h>
+#include <fcntl.h>
 #include <signal.h>
 
 #define KEY_CTL_L 12
@@ -62,26 +64,66 @@
 #define KEY_CTL_U 21
 #define KEY_CTL_Y 25
 #define KEY_BKSP 127
+#define KEY_NL 10
 
 typedef struct s_node* node;
 
-//static node StartOfList;
-//static node CurCMD;
+static node StartOfList;
+static node CurCMD;
+static int curSize;
 
 static int running;
 
 /* TODO
- * Implement command chain linkedlist
- * Implement currentcommand char*
- * Implement running commands
+ * Implement command chain linkedlist -- BACKSPACE REMOVING CHARS
  * Implement L/R motion restrictions
  * Implement clearing terminal, moving to 0, moving to $
  * Implement U/D motion
  * Implement Clipboard
  */
 
+void exportHistory(){
+	remove("./.nsmhistory");
+	FILE* f = fopen("./.nsmhistory","w");
+	node t = StartOfList;
+	while(t){
+		fprintf(f,"\n%s",(char*)t->elem);
+		t=t->next;
+	}
+	fclose(f);
+}
+
+void importHistory(){
+	int f;
+	if((f = open("./.nsmhistory",O_RDONLY))<0){
+		curSize=0;
+		CurCMD=new_node((char*)malloc(sizeof(char)*curSize),NULL,NULL);
+		append(CurCMD,&StartOfList);
+		return;
+	}
+	char buf;
+	char* curStr;
+	curSize=0;
+	while(read(f,&buf,1)){
+		if(buf=='\n'){
+			curSize=0;
+			curStr=(char*)malloc(sizeof(char)*curSize);
+			CurCMD=new_node(curStr,NULL,NULL);
+			append(CurCMD,&StartOfList);
+		}
+		else{
+			curSize++;
+			curStr=(char*)realloc(curStr,sizeof(char)*curSize);
+			curStr[curSize-1]=buf;
+		}
+	}
+	curSize=0;
+	CurCMD=new_node((char*)malloc(sizeof(char)*curSize),NULL,NULL);
+	append(CurCMD,&StartOfList);
+	close(f);
+}
+
 void miniprompt(){
-	beep();
 	attron(COLOR_PAIR(1));
 	addstr("(mini)");
 	char cwd[1024];
@@ -101,7 +143,7 @@ void minicd(char* path){
 
 void miniexit(){
 	addstr("Goodbye\n");
-	//Export to .nsmhistory
+	exportHistory();
 	running=0;
 }
 
@@ -112,15 +154,51 @@ void minihelp(){
 	addstr("> help : Usage: help. Displays this help message\n");
 }
 
-void exportHistory(node head){
-
-}
-
-void importHistory(node head){
-
+void miniexec(char* cmdStr){
+	int y,maxy;
+	y=getcury(stdscr);
+	maxy=getmaxy(stdscr);
+	if(y==maxy-1){
+		addch('\n');
+	}
+	move(y+1,0);
+	if(strlen(cmdStr)<1)
+		return;
+	char** cmd = my_str2vect(cmdStr);
+	if(strcmp(cmd[0],"cd")==0)
+		minicd(cmd[1]);
+	else if(my_strcmp(cmd[0],"help")==0)
+		minihelp();
+	else if(my_strcmp(cmd[0],"exit")==0)
+		miniexit();
+	else{
+		int pipefd[2];
+		pipe(pipefd);
+		int cpid = fork();
+		if(cpid==0){
+			close(pipefd[0]);
+			dup2(pipefd[1],1);
+			dup2(pipefd[1],2);
+			signal(SIGINT,SIG_DFL);
+			if(execvp(cmd[0],cmd)!=1){
+				my_str("Unrecognized.\n");
+				minihelp();
+			}
+			close(pipefd[1]);
+			exit(0);
+		}
+		else{
+			close(pipefd[1]);
+			char stdbuf;
+			while(read(pipefd[0],&stdbuf,1))
+				addch(stdbuf);
+			wait(NULL);
+		}
+	}
 }
 
 int main(int argc, char* argv[]){
+	importHistory();
 	initscr();
 	cbreak();
 	noecho();
@@ -131,7 +209,7 @@ int main(int argc, char* argv[]){
 			init_pair(2,COLOR_GREEN,COLOR_BLACK);
 		}
 	}
-	
+	scrollok(stdscr,TRUE);
 	keypad(stdscr,true);
 	miniprompt();
 	running=1;
@@ -139,7 +217,12 @@ int main(int argc, char* argv[]){
 		int c = getch();
 		switch(c){
 			case KEY_BKSP:
-				{int y,x;
+				{
+				if(curSize>0){
+					curSize--;
+					((char*)CurCMD->elem)[curSize]='\0';
+				}
+				int y,x;
 				getyx(stdscr,y,x);
 				if(x==0){
 					int tmp = y;
@@ -154,10 +237,11 @@ int main(int argc, char* argv[]){
 				move(y,x-1);
 				//Restrict motion to within command
 				delch();
-				//Remove char from current command
 				break;}
 			case KEY_CTL_L://Clear term except for current command
-				addstr("Clear");
+				clear();
+				miniprompt();
+				addstr((char*)CurCMD->elem);
 				break;
 			case KEY_CTL_A://Move to start of current command
 				addstr("MoveTo0");
@@ -202,15 +286,31 @@ int main(int argc, char* argv[]){
 				move(y,x+1);
 				//Restrict motion to within command
 				break;}
-			case 10:
-				{int y,x;
-				getyx(stdscr,y,x);
-				move(y+1,x-x);
+			case KEY_NL:
+				{
+				if(strlen(CurCMD->elem)>0){
+					curSize++;
+					CurCMD->elem = (char*)realloc(CurCMD->elem,sizeof(char)*curSize);
+					((char*)(CurCMD->elem))[curSize-1]='\0';
+					miniexec(CurCMD->elem);
+					curSize=0;
+					CurCMD=new_node((char*)malloc(sizeof(char)*curSize),NULL,NULL);
+					append(CurCMD,&StartOfList);
+				}
+				int y,maxy;
+				y=getcury(stdscr);
+				maxy=getmaxy(stdscr);
+				if(y==maxy-1){
+					addch('\n');
+				}
+				move(y+1,0);
 				miniprompt();
 				break;}
 			default:
 				addch(c);
-				//Add char to current command
+				curSize++;
+				CurCMD->elem = (char*)realloc(CurCMD->elem,sizeof(char)*curSize);
+				((char*)(CurCMD->elem))[curSize-1]=c;
 				break;
 		}
 	}

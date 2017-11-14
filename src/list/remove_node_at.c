@@ -20,9 +20,13 @@
 #include "list.h"
 
 void* remove_node_at(struct s_node** head, int n){
+	if(head==NULL || *head==NULL)
+		return NULL;
 	struct s_node* t = *head;
-	for(int ctr = 0; t->next && ctr<n; ctr++)
+	for(int ctr = 0; t->next!=NULL && ctr<n; ctr++)
 		t = t->next;
-	return remove_node(&t);
+	if(t->prev!=NULL)
+		return remove_node(&t);
+	return remove_node(head);
 }
 

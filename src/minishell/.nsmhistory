@@ -1,0 +1,10 @@
+
+Hello
+Hello
+cd ..
+cd minishell
+./testprgProg
+ls
+testProg
+./testProg
+exit

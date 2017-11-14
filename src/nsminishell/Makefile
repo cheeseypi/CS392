@@ -6,7 +6,7 @@ mainprog_c = nsminishell.c
 out_name = nsminishell
 
 all: $(mainprog_c) ../../lib/libmy.a ../../lib/liblist.a
-	$(CC) $(CFLAGS) -o $(out_name) $(mainprog_c) -L$(LD_LIBRARY_PATH) -llist -lncurses -ltinfo
+	$(CC) $(CFLAGS) -o $(out_name) $(mainprog_c) -L$(LD_LIBRARY_PATH) -llist -lmy -lncurses -ltinfo
 
 clean:
 	-rm ./$(out_name)
