@@ -8,29 +8,29 @@
  *
  *    			Implement the following features:
  *
- *    			Backspace: Since you will not be using buffered input you will need
+ *    	#		Backspace: Since you will not be using buffered input you will need
  *    					to re-implement the backspace key.
- *    			Left and Right Arrow Keys: should move the cursor back and forth.
- *    			Up and Down Arrow Keys: Should swap between previous and the current
+ *    	#		Left and Right Arrow Keys: should move the cursor back and forth.
+ *    	---		Up and Down Arrow Keys: Should swap between previous and the current
  *    					command. For this feature you will most likely need to use
  *    					your linked list
  *
- *    			CTRL + "L": Clear the terminal except for the current command
- *    			CTRL + "A": Move to the start of the current command
- *    			CTRL + "E": Move to the end of the current command
- *    			CTRL + "W": Cut a word into the clipboard. You should be able to cut
+ *    	#		CTRL + "L": Clear the terminal except for the current command
+ *    	#		CTRL + "A": Move to the start of the current command
+ *    	#		CTRL + "E": Move to the end of the current command
+ *    	---		CTRL + "W": Cut a word into the clipboard. You should be able to cut
  *    					multiple words. (Try using it in bash!)
- *    			CTRL + "U": Cut a line into the clipboard. It should be able to work
+ *    	---		CTRL + "U": Cut a line into the clipboard. It should be able to work
  *    					with the above commend. (Once again, try using it in bash)
- *    			CTRL + "Y": Paste.
+ *    	---		CTRL + "Y": Paste.
  *
- *    			Color: Make it look pretty! The prompt and directory should be
+ *    	#		Color: Make it look pretty! The prompt and directory should be
  *    					different colors.
  *
- *    			Saved History: When you exit, save your command history to a file
+ *    	#		Saved History: When you exit, save your command history to a file
  *    					called .nsmshistory and load the command history when you
  *    					start
- *    			Dollar Sign: Program the ability to use the $() to pass output from
+ *    	---		Dollar Sign: Program the ability to use the $() to pass output from
  *    					one program into another (i.e. more $(myselect *.c))
  *
  *        Version:  1.0
@@ -71,17 +71,20 @@ typedef struct s_node* node;
 static node history;
 static int hisSize;
 static int hisInd;
+
 static node CurCMD;
 static int curSize;
 static int curInd;
 
+static node CurCMDbk;
+static int curSizebk;
+
 static int running;
 
 /* TODO
- * Implement command chain linkedlist -- BACKSPACE REMOVING CHARS
- * Implement clearing terminal, moving to 0, moving to $
- * Implement U/D motion
  * Implement Clipboard
+ * Nested Commands
+ * Fix U/D motion -- type, move up, edit command, enter -- duplicates command
  */
 
 void exportHistory(){
@@ -89,7 +92,7 @@ void exportHistory(){
 	FILE* f = fopen("./.nsmhistory","w");
 	node t = history;
 	while(t){
-		fprintf(f,"\n%s",(char*)t->elem);
+		fprintf(f,"%s\n",(char*)t->elem);
 		t=t->next;
 	}
 	fclose(f);
@@ -114,6 +117,8 @@ void importHistory(){
 			curStr=(char*)realloc(curStr,sizeof(char)*cursSize);
 			curStr[cursSize-1]='\0';
 			append(new_node(curStr,NULL,NULL),&history);
+			cursSize=0;
+			curStr=(char*)malloc(sizeof(char)*cursSize);
 		}
 		else{
 			cursSize++;
@@ -211,7 +216,6 @@ void minicd(char* path){
 
 void miniexit(){
 	addstr("Goodbye\n");
-	exportHistory();
 	running=0;
 }
 
@@ -349,10 +353,122 @@ int main(int argc, char* argv[]){
 				addstr("Paste");
 				break;
 			case KEY_UP://Move up one command in the list
-				addstr("Up");
+				if(hisInd>0 && hisInd==hisSize){//Backup current command
+					CurCMDbk=CurCMD;
+					curSizebk=curSize;
+				}
+				if(hisInd>0){//Load & display command
+					hisInd--;
+					node t = history;
+					for(int ctr=0; ctr<hisInd; ctr++){
+						t = t->next;
+					}
+					CurCMD=stringToList((char*)t->elem);
+					reprintCommand();
+					curSize=strlen(t->elem);
+					while(curInd>0){//Move to start of command
+						int y,x;
+						getyx(stdscr,y,x);
+						if(x==0){
+							int tmp = y;
+							getmaxyx(stdscr,y,x);
+							y = tmp-1;
+							while(mvgetch(y,x)==' '){
+								if(x==0)
+									break;
+								x--;
+							}
+						}
+						move(y,x-1);
+						curInd--;
+					}
+					while(curInd<curSize){//Move to end of command
+						int y,x,maxx;
+						getyx(stdscr,y,x);
+						maxx=getmaxx(stdscr);
+						if(x==maxx){
+							y++;
+							x=-1;
+						}
+						move(y,x+1);
+						curInd++;
+					}
+				}
 				break;
 			case KEY_DOWN://Move down one command in the list
-				addstr("Down");
+				if(hisInd<hisSize){
+					hisInd++;
+					if(hisInd<hisSize){//Load from history
+						node t = history;
+						for(int ctr=0; ctr<hisInd; ctr++){
+							t = t->next;
+						}
+						CurCMD=stringToList((char*)t->elem);
+						reprintCommand();
+						curSize=strlen(t->elem);
+						while(curInd>0){//Move to start of command
+							int y,x;
+							getyx(stdscr,y,x);
+							if(x==0){
+								int tmp = y;
+								getmaxyx(stdscr,y,x);
+								y = tmp-1;
+								while(mvgetch(y,x)==' '){
+									if(x==0)
+										break;
+									x--;
+								}
+							}
+							move(y,x-1);
+							curInd--;
+						}
+						while(curInd<curSize){//Move to end of command
+							int y,x,maxx;
+							getyx(stdscr,y,x);
+							maxx=getmaxx(stdscr);
+							if(x==maxx){
+								y++;
+								x=-1;
+							}
+							move(y,x+1);
+							curInd++;
+						}
+					}
+					else if(hisInd==hisSize){//Load command in progress
+						CurCMD = CurCMDbk;
+						CurCMDbk = NULL;
+						reprintCommand();
+						curSize = curSizebk;
+						curSizebk = 0;
+						while(curInd>0){//Move to start of command
+							int y,x;
+							getyx(stdscr,y,x);
+							if(x==0){
+								int tmp = y;
+								getmaxyx(stdscr,y,x);
+								y = tmp-1;
+								while(mvgetch(y,x)==' '){
+									if(x==0)
+										break;
+									x--;
+								}
+							}
+							move(y,x-1);
+							curInd--;
+						}
+						while(curInd<curSize){//Move to end of command
+							int y,x,maxx;
+							getyx(stdscr,y,x);
+							maxx=getmaxx(stdscr);
+							if(x==maxx){
+								y++;
+								x=-1;
+							}
+							move(y,x+1);
+							curInd++;
+						}
+					}
+				}
 				break;
 			case KEY_LEFT:
 				if(curInd>0){
@@ -397,11 +513,15 @@ int main(int argc, char* argv[]){
 					char* cmd = listToString(CurCMD);
 					miniexec(cmd);
 					append(new_node(cmd,NULL,NULL),&history);
-					hisInd++;
 					hisSize++;
+					hisInd=hisSize;
 					curSize=0;
 					curInd=0;
 					CurCMD=NULL;
+				}
+				if(CurCMDbk){
+					CurCMDbk=NULL;
+					curSize=0;
 				}
 				miniprompt();
 				break;}
@@ -424,5 +544,6 @@ int main(int argc, char* argv[]){
 				break;}
 		}
 	}
+	exportHistory();
 	endwin();
 }

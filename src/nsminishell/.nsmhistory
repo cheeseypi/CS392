@@ -1,6 +1,13 @@
-
-
-
-
 ls
+exit
 help
+ls
+true
+false
+true
+helpme
+exit
+false
+ls -l
+ls -l
+exit
