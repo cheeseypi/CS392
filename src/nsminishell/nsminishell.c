@@ -68,15 +68,17 @@
 
 typedef struct s_node* node;
 
-static node StartOfList;
+static node history;
+static int hisSize;
+static int hisInd;
 static node CurCMD;
 static int curSize;
+static int curInd;
 
 static int running;
 
 /* TODO
  * Implement command chain linkedlist -- BACKSPACE REMOVING CHARS
- * Implement L/R motion restrictions
  * Implement clearing terminal, moving to 0, moving to $
  * Implement U/D motion
  * Implement Clipboard
@@ -85,7 +87,7 @@ static int running;
 void exportHistory(){
 	remove("./.nsmhistory");
 	FILE* f = fopen("./.nsmhistory","w");
-	node t = StartOfList;
+	node t = history;
 	while(t){
 		fprintf(f,"\n%s",(char*)t->elem);
 		t=t->next;
@@ -96,31 +98,97 @@ void exportHistory(){
 void importHistory(){
 	int f;
 	if((f = open("./.nsmhistory",O_RDONLY))<0){
-		curSize=0;
-		CurCMD=new_node((char*)malloc(sizeof(char)*curSize),NULL,NULL);
-		append(CurCMD,&StartOfList);
+		history=NULL;
 		return;
 	}
 	char buf;
-	char* curStr;
-	curSize=0;
+	int cursSize=0;
+	char* curStr=(char*)malloc(sizeof(char)*cursSize);
+	hisSize=0;
+	hisInd=0;
 	while(read(f,&buf,1)){
 		if(buf=='\n'){
-			curSize=0;
-			curStr=(char*)malloc(sizeof(char)*curSize);
-			CurCMD=new_node(curStr,NULL,NULL);
-			append(CurCMD,&StartOfList);
+			hisSize++;
+			hisInd++;
+			cursSize++;
+			curStr=(char*)realloc(curStr,sizeof(char)*cursSize);
+			curStr[cursSize-1]='\0';
+			append(new_node(curStr,NULL,NULL),&history);
 		}
 		else{
-			curSize++;
-			curStr=(char*)realloc(curStr,sizeof(char)*curSize);
-			curStr[curSize-1]=buf;
+			cursSize++;
+			curStr=(char*)realloc(curStr,sizeof(char)*cursSize);
+			curStr[cursSize-1]=buf;
 		}
 	}
-	curSize=0;
-	CurCMD=new_node((char*)malloc(sizeof(char)*curSize),NULL,NULL);
-	append(CurCMD,&StartOfList);
 	close(f);
+}
+
+char* listToString(node head){
+	node t = head;
+	int strSize=0;
+	char* str=(char*) malloc(sizeof(char)*strSize);
+	while(t){
+		strSize++;
+		str = (char*) realloc(str,sizeof(char)*strSize);
+		strcpy(&(str[strSize-1]),t->elem);
+		t = t->next;
+	}
+	strSize++;
+	str=(char*)realloc(str, sizeof(char)*strSize);
+	strcpy(&(str[strSize-1]),"\0");
+	return str;
+}
+
+node stringToList(char* str){
+	node head = NULL;
+	for(int ctr=0; str[ctr]!='\0'; ctr++){
+		char* temp = (char*) malloc(sizeof(char));
+		temp[0]=str[ctr];
+		append(new_node(temp,NULL,NULL),&head);
+	}
+	return head;
+}
+
+void reprintCommand(){
+	char* cmd = listToString(CurCMD);
+	int index = curInd;
+	while(curInd>0){//Move to start of current command
+		int y,x;
+		getyx(stdscr,y,x);
+		if(x==0){
+			int tmp = y;
+			getmaxyx(stdscr,y,x);
+			y = tmp-1;
+			clrtoeol();
+			while(mvgetch(y,x)==' '){
+				if(x==0)
+					break;
+				x--;
+			}
+		}
+		move(y,x-1);
+		curInd--;
+	}
+	clrtoeol();//Clear whatever's printed
+	addstr(cmd);//Reprint command
+	curInd=strlen(cmd);
+	while(curInd>index){//Move back to correct index
+		int y,x;
+		getyx(stdscr,y,x);
+		if(x==0){
+			int tmp = y;
+			getmaxyx(stdscr,y,x);
+			y = tmp-1;
+			while(mvgetch(y,x)==' '){
+				if(x==0)
+					break;
+				x--;
+			}
+		}
+		move(y,x-1);
+		curInd--;
+	}
 }
 
 void miniprompt(){
@@ -148,23 +216,29 @@ void miniexit(){
 }
 
 void minihelp(){
-	addstr("Minishell is a shell containing some very basic commands, listed here:\n");
+	addstr("NSMinishell is a shell containing some very basic commands, listed here:\n");
 	addstr("> cd : Usage: cd <path>. Can be used to move to relative or hard paths\n");
 	addstr("> exit : Usage: exit. Can be used to exit minishell safely\n");
 	addstr("> help : Usage: help. Displays this help message\n");
 }
 
 void miniexec(char* cmdStr){
-	int y,maxy;
+	/*int y,maxy;
 	y=getcury(stdscr);
 	maxy=getmaxy(stdscr);
 	if(y==maxy-1){
 		addch('\n');
 	}
-	move(y+1,0);
+	move(y+1,0);*/
 	if(strlen(cmdStr)<1)
 		return;
 	char** cmd = my_str2vect(cmdStr);
+	for(int ctr=0; cmd[ctr]; ctr++){
+		if(strncmp(cmd[ctr],"$(",2)==0){
+			perror("Subcommands not yet working");
+			break;
+		}
+	}
 	if(strcmp(cmd[0],"cd")==0)
 		minicd(cmd[1]);
 	else if(my_strcmp(cmd[0],"help")==0)
@@ -172,26 +246,27 @@ void miniexec(char* cmdStr){
 	else if(my_strcmp(cmd[0],"exit")==0)
 		miniexit();
 	else{
-		int pipefd[2];
-		pipe(pipefd);
+		int outputfd[2];
+		pipe(outputfd);
 		int cpid = fork();
 		if(cpid==0){
-			close(pipefd[0]);
-			dup2(pipefd[1],1);
-			dup2(pipefd[1],2);
+			close(outputfd[0]);
+			dup2(outputfd[1],1);
+			dup2(outputfd[1],2);
 			signal(SIGINT,SIG_DFL);
+			addstr("\n");
 			if(execvp(cmd[0],cmd)!=1){
 				my_str("Unrecognized.\n");
 				minihelp();
 			}
-			close(pipefd[1]);
+			close(outputfd[1]);
 			exit(0);
 		}
 		else{
-			close(pipefd[1]);
-			char stdbuf;
-			while(read(pipefd[0],&stdbuf,1))
-				addch(stdbuf);
+			close(outputfd[1]);
+			char stdBuf;
+			while(read(outputfd[0],&stdBuf,1))
+				addch(stdBuf);
 			wait(NULL);
 		}
 	}
@@ -213,41 +288,56 @@ int main(int argc, char* argv[]){
 	keypad(stdscr,true);
 	miniprompt();
 	running=1;
+	curSize=0;
+	curInd=0;
 	while(running){
 		int c = getch();
 		switch(c){
 			case KEY_BKSP:
-				{
-				if(curSize>0){
+				if(curSize>0 && curInd>0){
+					remove_node_at(&CurCMD,curInd-1);
+					reprintCommand();
 					curSize--;
-					((char*)CurCMD->elem)[curSize]='\0';
+					//curInd--;
 				}
-				int y,x;
-				getyx(stdscr,y,x);
-				if(x==0){
-					int tmp = y;
-					getmaxyx(stdscr,y,x);
-					y = tmp-1;
-					while(mvgetch(y,x)==' '){
-						if(x==0)
-							break;
-						x--;
-					}
-				}
-				move(y,x-1);
-				//Restrict motion to within command
-				delch();
-				break;}
-			case KEY_CTL_L://Clear term except for current command
+				break;
+			case KEY_CTL_L:{//Clear term except for current command
 				clear();
 				miniprompt();
-				addstr((char*)CurCMD->elem);
-				break;
+				char* tmp = listToString(CurCMD);
+				addstr(tmp);
+				free(tmp);
+				break;}
 			case KEY_CTL_A://Move to start of current command
-				addstr("MoveTo0");
+				while(curInd>0){
+					int y,x;
+					getyx(stdscr,y,x);
+					if(x==0){
+						int tmp = y;
+						getmaxyx(stdscr,y,x);
+						y = tmp-1;
+						while(mvgetch(y,x)==' '){
+							if(x==0)
+								break;
+							x--;
+						}
+					}
+					move(y,x-1);
+					curInd--;
+				}
 				break;
 			case KEY_CTL_E://Move to end of current command
-				addstr("MoveTo$");
+				while(curInd<curSize){
+					int y,x,maxx;
+					getyx(stdscr,y,x);
+					maxx=getmaxx(stdscr);
+					if(x==maxx){
+						y++;
+						x=-1;
+					}
+					move(y,x+1);
+					curInd++;
+				}
 				break;
 			case KEY_CTL_W://Cut word into clipboard
 				addstr("CutWord");
@@ -265,53 +355,73 @@ int main(int argc, char* argv[]){
 				addstr("Down");
 				break;
 			case KEY_LEFT:
-				{int y,x;
-				getyx(stdscr,y,x);
-				if(x==0){
-					int tmp = y;
-					getmaxyx(stdscr,y,x);
-					y = tmp-1;
-					while(mvgetch(y,x)=='\0'){
-						if(x==0)
-							break;
-						x--;
+				if(curInd>0){
+					int y,x;
+					getyx(stdscr,y,x);
+					if(x==0){
+						int tmp = y;
+						getmaxyx(stdscr,y,x);
+						y = tmp-1;
+						while(mvgetch(y,x)=='\0'){
+							if(x==0)
+								break;
+							x--;
+						}
 					}
+					move(y,x-1);
+					curInd--;
 				}
-				move(y,x-1);
-				//Restrict motion to within command
-				break;}
+				break;
 			case KEY_RIGHT:
-				{int y,x;
-				getyx(stdscr,y,x);
-				move(y,x+1);
-				//Restrict motion to within command
-				break;}
-			case KEY_NL:
-				{
-				if(strlen(CurCMD->elem)>0){
-					curSize++;
-					CurCMD->elem = (char*)realloc(CurCMD->elem,sizeof(char)*curSize);
-					((char*)(CurCMD->elem))[curSize-1]='\0';
-					miniexec(CurCMD->elem);
-					curSize=0;
-					CurCMD=new_node((char*)malloc(sizeof(char)*curSize),NULL,NULL);
-					append(CurCMD,&StartOfList);
+				if(curInd<curSize){
+					int y,x,maxx;
+					getyx(stdscr,y,x);
+					maxx=getmaxx(stdscr);
+					if(x==maxx){
+						y++;
+						x=-1;
+					}
+					move(y,x+1);
+					curInd++;
 				}
-				int y,maxy;
+				break;
+			case KEY_NL:
+				{int y,maxy;
 				y=getcury(stdscr);
 				maxy=getmaxy(stdscr);
 				if(y==maxy-1){
 					addch('\n');
 				}
 				move(y+1,0);
+				if(curSize>0){
+					char* cmd = listToString(CurCMD);
+					miniexec(cmd);
+					append(new_node(cmd,NULL,NULL),&history);
+					hisInd++;
+					hisSize++;
+					curSize=0;
+					curInd=0;
+					CurCMD=NULL;
+				}
 				miniprompt();
 				break;}
 			default:
-				addch(c);
+				{
+				char* temp = (char*)malloc(sizeof(char));
+				temp[0]=c;
+				add_node_at(new_node(temp,NULL,NULL),&CurCMD,curInd);
+				reprintCommand();
 				curSize++;
-				CurCMD->elem = (char*)realloc(CurCMD->elem,sizeof(char)*curSize);
-				((char*)(CurCMD->elem))[curSize-1]=c;
-				break;
+				int y,x,maxx;
+				getyx(stdscr,y,x);
+				maxx=getmaxx(stdscr);
+				if(x==maxx){
+					y++;
+					x=-1;
+				}
+				move(y,x+1);
+				curInd++;
+				break;}
 		}
 	}
 	endwin();
