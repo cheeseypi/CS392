@@ -79,12 +79,17 @@ static int curInd;
 static node CurCMDbk;
 static int curSizebk;
 
+static node clipboard;
+static int clippingWord;
+
 static int running;
 
 /* TODO
  * Implement Clipboard
  * Nested Commands
  * Fix U/D motion -- type, move up, edit command, enter -- duplicates command
+ * Fix whatever the fuck is wrong with stdin
+ * Long commmands?
  */
 
 void exportHistory(){
@@ -227,21 +232,22 @@ void minihelp(){
 }
 
 void miniexec(char* cmdStr){
-	/*int y,maxy;
-	y=getcury(stdscr);
-	maxy=getmaxy(stdscr);
-	if(y==maxy-1){
-		addch('\n');
-	}
-	move(y+1,0);*/
 	if(strlen(cmdStr)<1)
 		return;
 	char** cmd = my_str2vect(cmdStr);
+	int subcstart=-1;
+	int subcend=-1;
 	for(int ctr=0; cmd[ctr]; ctr++){
 		if(strncmp(cmd[ctr],"$(",2)==0){
-			perror("Subcommands not yet working");
+			subcstart=ctr;
+		}
+		if(cmd[ctr][strlen(cmd[ctr])-1]=='}'){
+			subcend=ctr;
 			break;
 		}
+	}
+	if(subcstart>0 && subcend>0){
+		//Do the subcommand
 	}
 	if(strcmp(cmd[0],"cd")==0)
 		minicd(cmd[1]);
@@ -260,7 +266,9 @@ void miniexec(char* cmdStr){
 			signal(SIGINT,SIG_DFL);
 			addstr("\n");
 			if(execvp(cmd[0],cmd)!=1){
-				my_str("Unrecognized.\n");
+				my_str("Unrecognized command ");
+				my_str(cmdStr);
+				my_str("\n");
 				minihelp();
 			}
 			close(outputfd[1]);
@@ -344,13 +352,98 @@ int main(int argc, char* argv[]){
 				}
 				break;
 			case KEY_CTL_W://Cut word into clipboard
-				addstr("CutWord");
+				{
+					if(clippingWord==0)
+						clipboard=NULL;
+					clippingWord=1;
+					node t = CurCMD;
+					int tInd = 0;
+					while(tInd<curInd){
+						t = t->next;
+						tInd++;
+					}
+					int firstRun=1;
+					while(t && (*(char*)(t->elem)!=' ' || firstRun)){
+						add_node(new_node(t->elem,NULL,NULL),&clipboard);
+						if(curSize>0 && curInd>0){
+							remove_node_at(&CurCMD,curInd-1);
+							reprintCommand();
+							curSize--;
+							int y,x;
+							getyx(stdscr,y,x);
+							if(x==0){
+								int tmp = y;
+								getmaxyx(stdscr,y,x);
+								y = tmp-1;
+								while(mvgetch(y,x)=='\0'){
+									if(x==0)
+										break;
+									x--;
+								}
+							}
+							move(y,x-1);
+							curInd--;
+						}
+						t=t->prev;
+						firstRun=0;
+					}
+				}
 				break;
 			case KEY_CTL_U://Cut line into clipboard
-				addstr("CutLine");
+				{
+					if(clippingWord)
+						clipboard=NULL;
+					clippingWord=0;
+					node t = CurCMD;
+					int tInd = 0;
+					while(tInd<curInd){
+						t = t->next;
+						tInd++;
+					}
+					while(t){
+						add_node(new_node(t->elem,NULL,NULL),&clipboard);
+						if(curSize>0 && curInd>0){
+							remove_node_at(&CurCMD,curInd-1);
+							reprintCommand();
+							curSize--;
+							int y,x;
+							getyx(stdscr,y,x);
+							if(x==0){
+								int tmp = y;
+								getmaxyx(stdscr,y,x);
+								y = tmp-1;
+								while(mvgetch(y,x)=='\0'){
+									if(x==0)
+										break;
+									x--;
+								}
+							}
+							move(y,x-1);
+							curInd--;
+						}
+						t=t->prev;
+					}
+				}
 				break;
 			case KEY_CTL_Y://Paste
-				addstr("Paste");
+				if(clipboard){
+					node t = clipboard;
+					while(t){
+						add_node_at(new_node(t->elem,NULL,NULL),&CurCMD,curInd);
+						reprintCommand();
+						curSize++;
+						int y,x,maxx;
+						getyx(stdscr,y,x);
+						maxx=getmaxx(stdscr);
+						if(x==maxx){
+							y++;
+							x=-1;
+						}
+						move(y,x+1);
+						curInd++;
+						t = t->next;
+					}
+				}
 				break;
 			case KEY_UP://Move up one command in the list
 				if(hisInd>0 && hisInd==hisSize){//Backup current command

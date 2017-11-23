@@ -1,11 +1,12 @@
-/* * =====================================================================================
+/*
+ * =====================================================================================
  *
  *       Filename:  socket_client.c
  *
- *    Description:  Chat Client
+ *    Description:  Client for sockettalk
  *
  *        Version:  1.0
- *        Created:  10/30/2017 12:48:07 PM
+ *        Created:  11/15/2017 02:45:06 PM
  *       Revision:  none
  *       Compiler:  gcc
  *
@@ -17,105 +18,51 @@
  */
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <poll.h>
+#include <signal.h>
 #include <netdb.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <string.h>
 
-char* promptUsername(){
-	int nameSize = 8;
-	char* name = (char*) malloc(nameSize*sizeof(char));
-	printf("Username] ");
-	fflush(stdout);
-	strcpy(name,"/nick ");
-	for(int nameInd=6; read(0,&name[nameInd],1); nameInd++){
-		if(nameInd==nameSize){
-			nameSize*=2;
-			name = (char*) realloc(name,nameSize*sizeof(char));
-		}
-		if(name[nameInd]=='\n'){
-			name[nameInd]='\0';
-			break;
-		}
-	}
-	return name;
-}
+int connect_serv(char* host, char* port){
+	struct addrinfo hints, *servinfo;
 
-static int servFD;
-
-struct addrinfo* establishConnection(char* nick, char* host, char* port){
-	int status;
-	struct addrinfo hints;
-	struct addrinfo *result, *servinfo;
 	memset(&hints, 0, sizeof hints);
-	hints.ai_family = AF_UNSPEC;
-	hints.ai_socktype = SOCK_DGRAM;
-	hints.ai_flags = 0;
-	hints.ai_protocol = 0;
-	if ((status = getaddrinfo(host, port, &hints, &result)) != 0) {
-		fprintf(stderr, "getaddrinfo error: %s\n", gai_strerror(status));
+	hints.ai_family=AF_INET;
+	hints.ai_socktype=SOCK_STREAM;
+
+	if(getaddrinfo(host,port,&hints,&servinfo)!=0){
+		perror("Could not get server addrinfo");
 		exit(1);
 	}
-	for (servinfo = result; servinfo != NULL; servinfo = servinfo->ai_next) {
-		servFD = socket(servinfo->ai_family, servinfo->ai_socktype,
-				servinfo->ai_protocol);
-		if (servFD == -1)
-			continue;
-		if (connect(servFD, servinfo->ai_addr, servinfo->ai_addrlen) != -1)
-			break;                  /* Success */
-		close(servFD);
+
+	int sockfd = socket(servinfo->ai_family,servinfo->ai_socktype,servinfo->ai_protocol);
+	if(sockfd<0){
+		perror("Could not open socket");
+		exit(1);
 	}
-	if (servinfo == NULL) {               /* No address succeeded */
-		fprintf(stderr, "Could not connect\n");
-		exit(EXIT_FAILURE);
+
+	if(connect(sockfd,servinfo->ai_addr,servinfo->ai_addrlen)<0){
+		perror("Connection failed");
+		exit(1);
 	}
-	freeaddrinfo(result);           /* No longer needed */
-	sendto(servFD,nick,strlen(nick)+1,0,servinfo->ai_addr,sizeof (servinfo->ai_addr));
-	return servinfo;
+
+	freeaddrinfo(servinfo);
+
+	return sockfd;
 }
 
-void readingLoop(struct addrinfo* servinfo){
-	fd_set rfds;
-	while(1){
-		FD_SET(servFD,&rfds);
-		FD_SET(0,&rfds);
-		select(servFD+1,&rfds,NULL,NULL,NULL);
-		if(FD_ISSET(servFD,&rfds)){
-			char buf;
-			uint fromlen = sizeof servinfo->ai_addr;
-			while(recvfrom(servFD,&buf,1,0,servinfo->ai_addr,&fromlen)){
-				write(1,&buf,1);
-			}
-		}
-		if(FD_ISSET(0,&rfds)){
-			int msgSize = 8;
-			char* msg = (char*) malloc(msgSize*sizeof(char));
-			for(int msgInd=0; read(0,&msg[msgInd],1); msgInd++){
-				if(msgInd==msgSize){
-					msgSize*=2;
-					msg = (char*) realloc(msg,msgSize*sizeof(char));
-				}
-				if(msg[msgInd]=='\n'){
-					msg[msgInd]='\0';
-					break;
-				}
-			}
-		}
-	}
-}
-
-int main(int argc, char *argv[]){
-	printf("Started\n");
+int main(int argc,char* argv[]){
 	if(argc!=3){
-		printf("Usage: %s [host] [port]",argv[0]);
+		fprintf(stderr,"Usage: %s <host> <port>",argv[0]);
 		exit(1);
 	}
-	printf("Prompt\n");
-	char* nick = promptUsername();
-	printf("%s",nick);
-	printf("Prompted\n");
-	struct addrinfo* servinfo = establishConnection(nick,argv[1],argv[2]);
-	printf("Connected\n");
-	readingLoop(servinfo);
+	int servfd = connect_serv(argv[1],argv[2]);
+
+	send(servfd,"cheese",6,0);
+	send(servfd,"hello",5,0);
+	char buf[20];
+	recv(servfd,&buf,20,0);
+	printf(buf);
 }

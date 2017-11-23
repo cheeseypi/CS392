@@ -3,10 +3,10 @@
  *
  *       Filename:  socket_server.c
  *
- *    Description:  Chat Server
+ *    Description:  Sockettalk Server
  *
  *        Version:  1.0
- *        Created:  10/30/2017 12:48:21 PM
+ *        Created:  11/15/2017 02:10:25 PM
  *       Revision:  none
  *       Compiler:  gcc
  *
@@ -17,142 +17,122 @@
  * =====================================================================================
  */
 #include <sys/types.h>
+#include <sys/socket.h>
+#include <poll.h>
+#include <signal.h>
+#include <netdb.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <string.h>
-#include <sys/socket.h>
-#include <netdb.h>
+#include <fcntl.h>
 
-#define BUF_SIZE 500
+int start_serv(char* port){
+	struct addrinfo hints, *servinfo;
 
-int main(int argc, char *argv[])
-{
-	struct addrinfo hints;
-	struct addrinfo *result, *rp;
-	int sfd, s;
-	struct sockaddr_in peer_addr;
-	socklen_t peer_addr_len;
-	ssize_t nread;
-	char buf[BUF_SIZE];
+	memset(&hints, 0, sizeof hints);
+	hints.ai_family=AF_INET;
+	hints.ai_socktype=SOCK_STREAM;
 
-	if (argc != 2) {
-		fprintf(stderr, "Usage: %s port\n", argv[0]);
-		exit(EXIT_FAILURE);
+	if(getaddrinfo("0.0.0.0",port,&hints,&servinfo)!=0){
+		perror("Could not get local addrinfo");
+		exit(1);
 	}
 
-	memset(&hints, 0, sizeof(struct addrinfo));
-	hints.ai_family = AF_UNSPEC;	 /* Allow IPv4 or IPv6 */
-	hints.ai_socktype = SOCK_DGRAM; /* Datagram socket */
-	hints.ai_flags = AI_PASSIVE;	 /* For wildcard IP address */
-	hints.ai_protocol = 0;			/* Any protocol */
-	hints.ai_canonname = NULL;
-	hints.ai_addr = NULL;
-	hints.ai_next = NULL;
-
-	s = getaddrinfo(NULL, argv[1], &hints, &result);
-	if (s != 0) {
-		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
-		exit(EXIT_FAILURE);
+	int sockfd = socket(servinfo->ai_family,servinfo->ai_socktype,servinfo->ai_protocol);
+	if(sockfd<0){
+		perror("Could not open socket");
+		exit(1);
 	}
 
-	/* getaddrinfo() returns a list of address structures.
-		Try each address until we successfully bind(2).
-		If socket(2) (or bind(2)) fails, we (close the socket
-		and) try the next address. */
+	fcntl(sockfd,F_SETFL,fcntl(sockfd,F_GETFL,0) | O_NONBLOCK);
 
-	for (rp = result; rp != NULL; rp = rp->ai_next) {
-		sfd = socket(rp->ai_family, rp->ai_socktype,
-				rp->ai_protocol);
-		if (sfd == -1)
-			continue;
-
-		if (bind(sfd, rp->ai_addr, rp->ai_addrlen) == 0)
-			break;					/* Success */
-
-		close(sfd);
+	//Handle socket-in-use
+	int yes=1;
+	if(setsockopt(sockfd,SOL_SOCKET,SO_REUSEADDR,&yes,sizeof yes)==-1){
+		perror("Setsockopt");
+		exit(1);
 	}
 
-	if (rp == NULL) {				/* No address succeeded */
-		fprintf(stderr, "Could not bind\n");
-		exit(EXIT_FAILURE);
+	bind(sockfd,servinfo->ai_addr,servinfo->ai_addrlen);
+
+	freeaddrinfo(servinfo);
+
+	return sockfd;
+}
+
+int main(int argc, char* argv[]){
+	if(argc!=2){
+		fprintf(stderr,"Usage: %s <port>",argv[0]);
+		exit(1);
 	}
+	nfds_t numClients = 0;
+	char* clientnicks[FD_SETSIZE] = {NULL};
+	struct pollfd clientfds[FD_SETSIZE];
+	for(int i = 0; i<FD_SETSIZE; i++)
+		clientfds[i].fd=-1;
+	int servfd = start_serv(argv[1]);
+	listen(servfd,FD_SETSIZE);
 
-	freeaddrinfo(result);			/* No longer needed */
-
-	int users_size=0;
-	char** users;
-	int peer_addrs_size=0;
-	struct sockaddr_in* peer_addrs;
-	users = (char**) malloc(sizeof(char*)*users_size);
-	peer_addrs = (struct sockaddr_in*) malloc(sizeof(struct sockaddr)*peer_addrs_size);
-
-	/* Read datagrams and echo them back to sender */
-
-	while(1) {
-		peer_addr_len = sizeof(struct sockaddr_in);
-		nread = recvfrom(sfd, buf, BUF_SIZE, 0,
-				(struct sockaddr *) &peer_addr, &peer_addr_len);
-		if (nread == -1)
-			continue;				/* Ignore failed request */
-
-		if(strncmp(buf,"/nick",5)==0){
-			int inList = 0;
-			int i = 0;
-			for(; i<peer_addrs_size; i++){
-				if(peer_addr.sin_addr.s_addr==peer_addrs[i].sin_addr.s_addr){
-					inList=1;
-					break;
-				}
-			}
-			if(!inList){
-				peer_addrs_size++;
-				peer_addrs = (struct sockaddr_in*) realloc(peer_addrs,sizeof(struct sockaddr)*peer_addrs_size);
-				users_size++;
-				users = (char**) realloc(users,sizeof(char*)*users_size);
-			}
-			peer_addrs[i]=peer_addr;
-			int len = strlen(&buf[6]);
-			users[i]=(char*)malloc(len*sizeof(char));
-			strncpy(users[i],&buf[6],len);
+	while(1){
+		if((clientfds[numClients].fd = accept(servfd,NULL,NULL))!=-1){
+			clientfds[numClients].events = POLLIN | POLLOUT;
+			clientnicks[numClients] = "";
+			numClients++;
 		}
-		if(strncmp(buf,"/exit",5)==0){
-			int inList = 0;
-			int i = 0;
-			for(; i<peer_addrs_size; i++){
-				if(peer_addr.sin_addr.s_addr==peer_addrs[i].sin_addr.s_addr){
-					inList=1;
-					break;
-				}
+		poll(clientfds,numClients,0);
+		for(int i=0; i<numClients; i++){
+			if(clientfds[i].fd==-1)
+				continue;
+			if(clientfds[i].revents & (POLLERR | POLLHUP | POLLNVAL)){
+				clientfds[i].fd=-1;
 			}
-			if(inList){
-				for(int ctr = i; ctr<peer_addrs_size-1; ctr++){
-					peer_addrs[ctr]=peer_addrs[ctr+1];
+			else if(clientfds[i].revents & POLLIN){
+				char* buf = (char*) malloc(sizeof(char)*256);
+				int currentSize = 0;
+				char* msg = (char*) malloc(sizeof(char)*currentSize);
+				while(recv(clientfds[i].fd,buf,256,0)){
+					currentSize+=256;
+					msg = (char*) realloc(msg,sizeof(char)*currentSize);
+					strcat(msg,buf);
 				}
-				peer_addrs_size--;
-				for(int ctr = i; ctr<users_size-1; ctr++){
-					users[ctr]=users[ctr+1];
+				
+				if(strlen(clientnicks[i])==0){
+					clientnicks[i] = (char*) malloc(sizeof(char)*strlen(msg));
+					strcpy(clientnicks[i],msg);
 				}
-				users_size--;
-				free(users[users_size]);
-				users = (char**) realloc(users,sizeof(char*)*users_size);
+				else if(strncmp("/nick",msg,5)==0){
+					clientnicks[i] = (char*) malloc(sizeof(char)*strlen(msg)-6);
+					strcpy(clientnicks[i],&(msg[6]));
+				}
+				else if(strncmp("/me",msg,3)==0){
+					char* sendMsg = (char*) malloc(sizeof(char)*(strlen(clientnicks[i])+1+strlen(msg)));
+					strcpy(sendMsg,clientnicks[i]);
+					strcat(sendMsg," ");
+					strcat(sendMsg,&(msg[4]));
+
+					for(int j=0; j<numClients; j++){
+						if(clientfds[j].revents & POLLOUT){
+							send(clientfds[j].fd,sendMsg,sizeof sendMsg,0);
+						}
+					}
+
+					free(sendMsg);
+				}
+				else{
+					char* sendMsg = (char*) malloc(sizeof(char)*(strlen(clientnicks[i])+2+strlen(msg)));
+					strcpy(sendMsg,clientnicks[i]);
+					strcat(sendMsg,": ");
+					strcat(sendMsg,msg);
+
+					for(int j=0; j<numClients; j++){
+						if(clientfds[j].revents & POLLOUT){
+							send(clientfds[j].fd,sendMsg,sizeof sendMsg,0);
+						}
+					}
+
+					free(sendMsg);
+				}
 			}
 		}
-
-		char host[NI_MAXHOST], service[NI_MAXSERV];
-
-		s = getnameinfo((struct sockaddr *) &peer_addr,
-						peer_addr_len, host, NI_MAXHOST,
-						service, NI_MAXSERV, NI_NUMERICSERV);
-		if (s == 0)
-			printf("Received %zd bytes from %s:%s\n",
-					nread, host, service);
-		else
-			fprintf(stderr, "getnameinfo: %s\n", gai_strerror(s));
-
-		if (sendto(sfd, buf, nread, 0,
-			(struct sockaddr *) &peer_addr,
-			peer_addr_len) != nread)
-			fprintf(stderr, "Error sending response\n");
 	}
 }
