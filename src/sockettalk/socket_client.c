@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 int connect_serv(char* host, char* port){
 	struct addrinfo hints, *servinfo;
@@ -58,11 +59,68 @@ int main(int argc,char* argv[]){
 		fprintf(stderr,"Usage: %s <host> <port>",argv[0]);
 		exit(1);
 	}
-	int servfd = connect_serv(argv[1],argv[2]);
+	struct pollfd servstdin[2];
+	servstdin[0].fd = connect_serv(argv[1],argv[2]);
+	servstdin[0].events = POLLIN | POLLOUT;
+	servstdin[1].fd = 0;
+	servstdin[1].events = POLLIN;
 
-	send(servfd,"cheese",6,0);
-	send(servfd,"hello",5,0);
-	char buf[20];
-	recv(servfd,&buf,20,0);
-	printf(buf);
+	write(1,"Nickname: ",10);
+	int running = 1;
+	while(running){
+		poll(servstdin,2,0);
+		if(servstdin[0].revents & POLLIN){
+			char buf;
+			int curSize=0;
+			char* msg = (char*) malloc(sizeof(char)*curSize);
+			while(recv(servstdin[0].fd,&buf,1,0)){
+				curSize++;
+				msg = (char*) realloc(msg,sizeof(char)*curSize);
+				msg[curSize-1]=buf;
+				if(buf=='\n' || buf=='\0'){
+					msg[curSize-1]='\0';
+					break;
+				}
+			}
+			printf("%s\n",msg);
+			free(msg);
+		}
+		if((servstdin[1].revents & POLLIN) && (servstdin[0].revents & POLLOUT)){
+			char buf;
+			int curSize=0;
+			char* msg = (char*) malloc(sizeof(char)*curSize);
+			while(read(servstdin[1].fd,&buf,1)){
+				curSize++;
+				msg = (char*) realloc(msg,sizeof(char)*curSize);
+				msg[curSize-1]=buf;
+				if(buf=='\n' || buf=='\0'){
+					msg[curSize-1]='\n';
+					break;
+				}
+			}
+			if(strncmp(msg,"/exit",5)==0)
+				running = 0;
+			send(servstdin[0].fd,msg,curSize,0);
+			free(msg);
+		}
+	}
+	close(servstdin[0].fd);
+
+	/*Test program
+	send(servfd,"/nick cheese\n",13,0);
+	send(servfd,"/me waves\n",10,0);
+	char buf;
+	int curSize=0;
+	char* msg = (char*) malloc(sizeof(char)*curSize);
+	while(recv(servfd,&buf,1,0)){
+		curSize++;
+		msg = (char*) realloc(msg,sizeof(char)*curSize);
+		msg[curSize-1]=buf;
+		if(buf=='\n' || buf=='\0'){
+			msg[curSize-1]='\0';
+			break;
+		}
+	}
+	printf("%s\n",msg);
+	send(servfd,"/exit\n",6,0);*/
 }

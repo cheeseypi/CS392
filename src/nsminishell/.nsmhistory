@@ -9,3 +9,5 @@ echo hello
 exit
 echo hello
 exit
+:q
+exit

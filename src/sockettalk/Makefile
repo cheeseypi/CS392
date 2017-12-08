@@ -14,9 +14,13 @@ server: $(server_c)
 client: $(client_c)
 	$(CC) $(CFLAGS) -o $(out_name_client) $(client_c)
 
-clean:
+clean-serv:
 	-rm ./$(out_name_server)
+
+clean-cli:
 	-rm ./$(out_name_client)
+
+clean: clean-serv clean-cli
 
 fclean: clean
 
@@ -28,10 +32,10 @@ test: all
 
 test-serv: server
 	-./server 3000
-	make fclean
+	-make clean-serv
 
 test-cli: client
 	-./client localhost 3000
-	-make fclean
+	-make clean-cli
 
 .SILENT:
